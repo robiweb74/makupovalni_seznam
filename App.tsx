@@ -192,6 +192,9 @@ const App: React.FC = () => {
 
   // Touch event handlers for mobile drag-and-drop
   const handleTouchStart = (e: React.TouchEvent, idx: number) => {
+    // Prevent HTML5 drag-and-drop from interfering with touch drag
+    e.preventDefault();
+
     const touch = e.touches[0];
     setTouchState({
       isDragging: true,
@@ -247,6 +250,9 @@ const App: React.FC = () => {
       draggedIdx: null,
       targetIdx: null
     });
+
+    // Reset desktop drag state to prevent stuck "disabled" appearance
+    setDraggedIdx(null);
   };
 
   return (
