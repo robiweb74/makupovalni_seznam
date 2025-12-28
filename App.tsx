@@ -176,6 +176,78 @@ const App: React.FC = () => {
   };
 
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [touchState, setTouchState] = useState<{
+    isDragging: boolean;
+    startY: number;
+    currentY: number;
+    draggedIdx: number | null;
+    targetIdx: number | null;
+  }>({
+    isDragging: false,
+    startY: 0,
+    currentY: 0,
+    draggedIdx: null,
+    targetIdx: null
+  });
+
+  // Touch event handlers for mobile drag-and-drop
+  const handleTouchStart = (e: React.TouchEvent, idx: number) => {
+    const touch = e.touches[0];
+    setTouchState({
+      isDragging: true,
+      startY: touch.clientY,
+      currentY: touch.clientY,
+      draggedIdx: idx,
+      targetIdx: idx
+    });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchState.isDragging || touchState.draggedIdx === null) return;
+
+    // Prevent scrolling while dragging
+    e.preventDefault();
+
+    const touch = e.touches[0];
+    const currentY = touch.clientY;
+
+    // Find which item we're hovering over
+    const element = document.elementFromPoint(touch.clientX, currentY);
+    const itemElement = element?.closest('[data-item-idx]');
+
+    if (itemElement) {
+      const targetIdx = parseInt(itemElement.getAttribute('data-item-idx') || '-1');
+      if (targetIdx !== -1) {
+        setTouchState(prev => ({
+          ...prev,
+          currentY,
+          targetIdx
+        }));
+      }
+    } else {
+      setTouchState(prev => ({
+        ...prev,
+        currentY
+      }));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchState.isDragging &&
+        touchState.draggedIdx !== null &&
+        touchState.targetIdx !== null &&
+        touchState.draggedIdx !== touchState.targetIdx) {
+      moveItem(touchState.draggedIdx, touchState.targetIdx);
+    }
+
+    setTouchState({
+      isDragging: false,
+      startY: 0,
+      currentY: 0,
+      draggedIdx: null,
+      targetIdx: null
+    });
+  };
 
   return (
     <div className="h-[100dvh] max-w-md mx-auto bg-white shadow-xl flex flex-col relative overflow-hidden">
@@ -320,10 +392,15 @@ const App: React.FC = () => {
             </div>
 
             {/* List Items */}
-            <div className="space-y-3 flex-1">
+            <div
+              className="space-y-3 flex-1"
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               {activeList?.items.map((item, idx) => (
-                <div 
+                <div
                   key={item.id}
+                  data-item-idx={idx}
                   draggable
                   onDragStart={() => setDraggedIdx(idx)}
                   onDragOver={(e) => { e.preventDefault(); }}
@@ -335,11 +412,15 @@ const App: React.FC = () => {
                   }}
                   className={`
                     flex items-center gap-3 p-4 bg-white border border-gray-100 rounded-2xl shadow-sm transition
-                    ${draggedIdx === idx ? 'opacity-50 scale-95' : ''}
+                    ${draggedIdx === idx || touchState.draggedIdx === idx ? 'opacity-50 scale-95' : ''}
+                    ${touchState.targetIdx === idx && touchState.draggedIdx !== idx ? 'border-indigo-400 border-2' : ''}
                     ${item.completed ? 'bg-gray-50 opacity-75' : ''}
                   `}
                 >
-                  <div className="drag-handle text-gray-300 cursor-grab p-1">
+                  <div
+                    className="drag-handle text-gray-300 cursor-grab p-1 touch-none"
+                    onTouchStart={(e) => handleTouchStart(e, idx)}
+                  >
                     <GripVertical size={20} />
                   </div>
                   
